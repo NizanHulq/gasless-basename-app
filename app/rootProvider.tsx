@@ -21,11 +21,11 @@ export function RootProvider({ children }: { children: ReactNode }) {
     const short = (val: string) =>
       val === "missing" ? val : `${val.slice(0, 6)}…${val.slice(-4)} (len=${val.length})`;
 
-    // eslint-disable-next-line no-console
+
     console.log("[RootProvider] chain", baseSepolia.id, baseSepolia.name);
-    // eslint-disable-next-line no-console
+
     console.log("[RootProvider] apiKey", short(apiKey));
-    // eslint-disable-next-line no-console
+
     console.log("[RootProvider] paymaster", short(paymaster));
   }
 

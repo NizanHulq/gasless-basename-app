@@ -2,12 +2,10 @@
 
 import { useCallback, useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import Image from "next/image";
 import {
   useAccount,
   useChainId,
-  useConnect,
-  useDisconnect,
-  useSwitchChain,
   useReadContract,
   useWriteContract,
   useWaitForTransactionReceipt,
@@ -98,9 +96,11 @@ export default function BaseNameMiniApp() {
           className="rounded-3xl bg-white text-slate-900 shadow-2xl border border-slate-200 px-5 py-6 space-y-6"
         >
           <div className="rounded-2xl overflow-hidden shadow-sm border border-slate-100">
-            <img
+            <Image
               src="/hero.png"
               alt="Base Name Hero"
+              width={600}
+              height={200}
               className="w-full h-32 object-cover"
             />
           </div>
@@ -277,9 +277,6 @@ function MintSection(props: {
   const {
     name,
     canMint,
-    hasChecked,
-    isChecking,
-    isAvailable,
     ethFee,
     usdcPrice,
   } = props;
