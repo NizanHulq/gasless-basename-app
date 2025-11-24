@@ -13,7 +13,7 @@ import {
   useWaitForTransactionReceipt,
 } from "wagmi";
 import { baseSepolia } from "wagmi/chains";
-import { parseEther } from "viem";
+import { parseEther, type BaseError } from "viem";
 import { BASENAME_REGISTRY } from "./src/contracts";
 
 const BASENAME_ADDRESS = BASENAME_REGISTRY.address;
@@ -72,22 +72,13 @@ export default function BaseNameMiniApp() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      // eslint-disable-next-line no-console
-      console.log("[BaseNameMiniApp] chainId", chainId, "registry", BASENAME_ADDRESS);
-      if (availabilityError) {
-        // eslint-disable-next-line no-console
-        console.log("[BaseNameMiniApp] availability error", availabilityError);
-      }
+      console.log("Debug: chainId", chainId, "isConnected", isConnected);
     }
-  }, [chainId, availabilityError]);
+  }, [chainId, isConnected, availabilityError]);
 
   return (
     <div className="min-h-screen bg-slate-100 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        <div className="mb-2 flex items-center justify-between text-[11px] text-slate-500">
-          <span>Chain: {chainId === 84532 ? "Base Sepolia" : chainId}</span>
-          <WalletControls />
-        </div>
         <header className="mb-3 flex items-center justify-between text-xs text-slate-200">
           <div className="inline-flex items-center gap-2 rounded-full bg-slate-900/80 px-3 py-1 border border-slate-800">
             <span className="h-2 w-2 rounded-full bg-sky-400 animate-pulse" />
@@ -106,6 +97,14 @@ export default function BaseNameMiniApp() {
           transition={{ duration: 0.35 }}
           className="rounded-3xl bg-white text-slate-900 shadow-2xl border border-slate-200 px-5 py-6 space-y-6"
         >
+          <div className="rounded-2xl overflow-hidden shadow-sm border border-slate-100">
+            <img
+              src="/hero.png"
+              alt="Base Name Hero"
+              className="w-full h-32 object-cover"
+            />
+          </div>
+
           <section className="space-y-2">
             <div className="inline-flex items-center gap-2 rounded-full bg-sky-50 px-3 py-1 text-[11px] font-medium text-sky-700">
               <span className="h-4 w-4 rounded-full bg-sky-500 text-[10px] text-white flex items-center justify-center">
@@ -181,11 +180,6 @@ export default function BaseNameMiniApp() {
             ethFee={ethFee}
             usdcPrice={usdcPrice}
           />
-
-          <p className="text-[11px] text-slate-400 leading-relaxed">
-            Gasless when sponsored by the paymaster. Otherwise your wallet shows
-            a normal gas prompt.
-          </p>
         </motion.div>
       </div>
     </div>
@@ -290,6 +284,7 @@ function MintSection(props: {
     usdcPrice,
   } = props;
 
+  const chainId = useChainId();
   const [method, setMethod] = useState<PaymentMethod>("ETH");
   const [fallbackMode, setFallbackMode] = useState(false);
   const [isPayingUsdc, setIsPayingUsdc] = useState(false);
@@ -322,14 +317,6 @@ function MintSection(props: {
   } = useWaitForTransactionReceipt({
     hash: usdcHash,
   });
-
-  const disabledReason = (() => {
-    if (!name) return "Enter a name above.";
-    if (!hasChecked) return "Check that your name is available.";
-    if (isChecking) return "Checking name on Base…";
-    if (isAvailable === false) return "This name is already taken.";
-    return "";
-  })();
 
   const isMinting =
     method === "ETH"
@@ -400,13 +387,17 @@ function MintSection(props: {
 
   return (
     <section className="space-y-3">
+      {chainId !== 84532 && (
+        <div className="rounded-lg bg-amber-50 px-3 py-2 text-[11px] font-medium text-amber-700 border border-amber-200">
+          Wrong network. Please switch to Base Sepolia. (Detected: {chainId})
+        </div>
+      )}
+
       <StepHeader step={2} title="Choose how to mint" />
 
       <div className="grid grid-cols-1 gap-3">
         <PaymentMethodCard
           label="Pay with ETH"
-          description="Simple on-chain payment. Gas can be sponsored."
-          badge="Classic"
           price={`${ethFeeText} ETH`}
           active={method === "ETH"}
           onClick={() => setMethod("ETH")}
@@ -414,8 +405,6 @@ function MintSection(props: {
 
         <PaymentMethodCard
           label="Pay with USDC"
-          description="Smooth stablecoin checkout. Great for non-ETH users."
-          badge="Recommended"
           price={`${usdcPrice.toFixed(2)} USDC`}
           active={method === "USDC"}
           onClick={() => setMethod("USDC")}
@@ -424,12 +413,12 @@ function MintSection(props: {
 
       <motion.button
         type="button"
-        disabled={!canMint || isMinting}
+        disabled={!canMint || isMinting || chainId !== 84532}
         onClick={handleMint}
-        whileTap={!isMinting && canMint ? { scale: 0.97 } : {}}
+        whileTap={!isMinting && canMint && chainId === 84532 ? { scale: 0.97 } : {}}
         className={`mt-1 w-full rounded-xl py-2.5 text-sm font-semibold shadow-md transition
           ${
-            !canMint
+            !canMint || chainId !== 84532
               ? "bg-slate-100 text-slate-400 cursor-not-allowed"
               : "bg-sky-600 text-white hover:bg-sky-500"
           } ${
@@ -439,10 +428,6 @@ function MintSection(props: {
         {primaryLabel}
       </motion.button>
 
-      {disabledReason && !canMint && (
-        <p className="text-[11px] text-slate-500">{disabledReason}</p>
-      )}
-
       {hasPaidUsdc && !isUsdcSuccess && method === "USDC" && (
         <p className="text-[11px] text-emerald-600">
           Payment received. Finalizing on-chain mint…
@@ -450,9 +435,9 @@ function MintSection(props: {
       )}
 
       {activeError && (
-        <p className="text-[11px] text-amber-600">
-          Mint failed. Check your wallet or try again later.
-        </p>
+        <div className="rounded-lg bg-rose-50 px-3 py-2 text-[11px] text-rose-600 border border-rose-200 break-words">
+          Error: {(activeError as BaseError).shortMessage || activeError.message}
+        </div>
       )}
     </section>
   );
@@ -460,13 +445,11 @@ function MintSection(props: {
 
 function PaymentMethodCard(props: {
   label: string;
-  description: string;
-  badge: string;
   price: string;
   active: boolean;
   onClick: () => void;
 }) {
-  const { label, description, badge, price, active, onClick } = props;
+  const { label, price, active, onClick } = props;
 
   return (
     <button
@@ -493,81 +476,12 @@ function PaymentMethodCard(props: {
             <span className="text-sm font-semibold text-slate-900">
               {label}
             </span>
-            <span
-              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                badge === "Recommended"
-                  ? "bg-emerald-100 text-emerald-700"
-                  : "bg-slate-100 text-slate-700"
-              }`}
-            >
-              {badge}
-            </span>
           </div>
-          <p className="text-[11px] text-slate-500">{description}</p>
         </div>
       </div>
       <div className="text-right text-[11px] text-slate-700">
         <div className="font-mono">{price}</div>
-        <div className="text-[10px] text-slate-400">all fees included</div>
       </div>
     </button>
-  );
-}
-
-function WalletControls() {
-  const { address, isConnected } = useAccount();
-  const { connectors, connectAsync, isPending } = useConnect();
-  const { disconnect } = useDisconnect();
-  const { switchChainAsync, isPending: isSwitching } = useSwitchChain();
-  const chainId = useChainId();
-  const targetChain = 84532; // Base Sepolia
-
-  if (isConnected) {
-    return (
-      <div className="flex items-center gap-2">
-        {chainId !== targetChain && (
-          <button
-            type="button"
-            disabled={isSwitching}
-            onClick={() => switchChainAsync({ chainId: targetChain })}
-            className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] text-amber-700 hover:border-amber-400 disabled:opacity-60"
-          >
-            Switch to Base Sepolia
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={() => disconnect()}
-          className="inline-flex items-center gap-1 rounded-full border border-slate-300 px-2 py-1 text-[11px] text-slate-600 hover:border-slate-400"
-        >
-          <span className="h-2 w-2 rounded-full bg-emerald-400" />
-          {shortenAddress(address)}
-          <span className="text-slate-400">(Disconnect)</span>
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-center gap-1">
-      {connectors.map((connector) => (
-        <button
-          key={connector.uid}
-          type="button"
-          disabled={!connector.ready || isPending}
-          onClick={async () => {
-            try {
-              await connectAsync({ connector });
-            } catch (err) {
-              console.error("Failed to connect", err);
-            }
-          }}
-          className="inline-flex items-center gap-1 rounded-full border border-slate-300 px-2 py-1 text-[11px] text-slate-600 hover:border-slate-400 disabled:opacity-50"
-        >
-          <span className="h-2 w-2 rounded-full bg-slate-400" />
-          {connector.name}
-        </button>
-      ))}
-    </div>
   );
 }
