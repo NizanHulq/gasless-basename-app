@@ -31,10 +31,10 @@ export const minikitConfig = {
     primaryCategory: "utility",
     tags: ["utility", "identity", "basename", "gasless"],
     heroImageUrl: `${ROOT_URL}/hero.png`,
-    tagline: "Mint your .base name gasless & instantly.",
-    ogTitle: "Basename Gasless App - Claim your identity",
-    ogDescription: "The easiest way to mint your .base name on Base Sepolia. Gasless transactions & USDC supported.",
+    tagline: "Mint your base name gasless",
+    ogTitle: "Basename Gasless App",
+    ogDescription: "Mint base names with gasless and USDC support",
     ogImageUrl: `${ROOT_URL}/hero.png`,
-    castShareUrl: "https://warpcast.com/~/compose?text=I%20just%20minted%20my%20.base%20name!%20Claim%20yours%20here:&embeds[]=https://gasless-basename-app.vercel.app",
+    // castShareUrl: "https://warpcast.com/...", // Removed to fix domain mismatch error
   },
 } as const;
