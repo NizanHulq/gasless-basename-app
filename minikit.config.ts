@@ -1,7 +1,8 @@
 const ROOT_URL =
   process.env.NEXT_PUBLIC_URL ||
-  (process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`) ||
-  "http://localhost:3000";
+  (process.env.VERCEL_URL
+    ? "https://gasless-basename-app.vercel.app"
+    : "http://localhost:3000");
 
 /**
  * MiniApp configuration object. Must follow the mini app manifest specification.
