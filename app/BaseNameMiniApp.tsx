@@ -2,7 +2,6 @@
 
 import { useCallback, useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import Image from "next/image";
 import { sdk } from "@farcaster/miniapp-sdk";
 import {
   useAccount,
@@ -34,7 +33,6 @@ function getUsdcPrice(name: string): number {
 
 export default function BaseNameMiniApp() {
   const { address, isConnected } = useAccount();
-  const chainId = useChainId();
   const [name, setName] = useState("");
   const [hasChecked, setHasChecked] = useState(false);
 
