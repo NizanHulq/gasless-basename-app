@@ -2,7 +2,6 @@
 
 import { useCallback, useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { sdk } from "@farcaster/miniapp-sdk";
 import {
   useAccount,
   useChainId,
@@ -66,12 +65,6 @@ export default function BaseNameMiniApp() {
     setHasChecked(true);
     await refetchAvailability();
   };
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      sdk.actions.ready();
-    }
-  }, []);
 
   return (
     <div className="min-h-screen bg-slate-100 flex items-center justify-center px-4">
