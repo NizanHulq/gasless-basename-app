@@ -20,7 +20,7 @@ export const minikitConfig = {
   },
   miniapp: {
     version: "1",
-    name: "gasless-basename-app",
+    name: "Basename Gasless App",
     subtitle: "Mint your base name gasless",
     description: "Mint base names with gasless and USDC support",
     screenshotUrls: [`${ROOT_URL}/screenshot.png`],
