@@ -3,6 +3,7 @@
 import { useCallback, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
+import { sdk } from "@farcaster/miniapp-sdk";
 import {
   useAccount,
   useChainId,
@@ -71,6 +72,7 @@ export default function BaseNameMiniApp() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       console.log("Debug: chainId", chainId, "isConnected", isConnected);
+      sdk.actions.ready();
     }
   }, [chainId, isConnected, availabilityError]);
 
