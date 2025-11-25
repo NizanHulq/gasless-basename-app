@@ -71,10 +71,9 @@ export default function BaseNameMiniApp() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      console.log("Debug: chainId", chainId, "isConnected", isConnected);
       sdk.actions.ready();
     }
-  }, [chainId, isConnected, availabilityError]);
+  }, []);
 
   return (
     <div className="min-h-screen bg-slate-100 flex items-center justify-center px-4">
@@ -98,11 +97,9 @@ export default function BaseNameMiniApp() {
           className="rounded-3xl bg-white text-slate-900 shadow-2xl border border-slate-200 px-5 py-6 space-y-6"
         >
           <div className="rounded-2xl overflow-hidden shadow-sm border border-slate-100">
-            <Image
+            <img
               src="/hero.png"
               alt="Base Name Hero"
-              width={600}
-              height={200}
               className="w-full h-32 object-cover"
             />
           </div>
