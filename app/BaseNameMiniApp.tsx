@@ -8,20 +8,34 @@ import {
   useReadContract,
   useWriteContract,
   useWaitForTransactionReceipt,
+  useSwitchChain,
 } from "wagmi";
-import { baseSepolia } from "wagmi/chains";
+import { baseSepolia, base } from "wagmi/chains";
 import { parseEther, type BaseError } from "viem";
 import { BASENAME_REGISTRY } from "./src/contracts";
+import {
+  Wallet,
+  ConnectWallet,
+  WalletDropdown,
+  WalletDropdownDisconnect,
+  WalletDropdownLink,
+} from '@coinbase/onchainkit/wallet';
+import {
+  Address,
+  Avatar,
+  Name,
+  Identity,
+} from '@coinbase/onchainkit/identity';
+
+const ENV = process.env.NEXT_PUBLIC_ENV || "production";
+const EXPECTED_CHAIN_ID = ENV === "testnet" ? baseSepolia.id : base.id;
 
 const BASENAME_ADDRESS = BASENAME_REGISTRY.address;
 const baseNameRegistryAbi = BASENAME_REGISTRY.abi;
 
 type PaymentMethod = "ETH" | "USDC";
 
-function shortenAddress(addr?: string) {
-  if (!addr) return "";
-  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-}
+
 
 function getUsdcPrice(name: string): number {
   if (!name) return 0;
@@ -31,7 +45,7 @@ function getUsdcPrice(name: string): number {
 }
 
 export default function BaseNameMiniApp() {
-  const { address, isConnected } = useAccount();
+  const { isConnected } = useAccount();
   const [name, setName] = useState("");
   const [hasChecked, setHasChecked] = useState(false);
 
@@ -45,7 +59,7 @@ export default function BaseNameMiniApp() {
     abi: baseNameRegistryAbi,
     functionName: "isAvailable",
     args: [name || ""],
-    chainId: baseSepolia.id,
+    chainId: EXPECTED_CHAIN_ID,
     query: { enabled: false },
   });
 
@@ -53,7 +67,7 @@ export default function BaseNameMiniApp() {
     address: BASENAME_ADDRESS,
     abi: baseNameRegistryAbi,
     functionName: "mintFee",
-    chainId: baseSepolia.id,
+    chainId: EXPECTED_CHAIN_ID,
   });
 
   const ethFee: bigint =
@@ -69,16 +83,26 @@ export default function BaseNameMiniApp() {
   return (
     <div className="min-h-screen bg-slate-100 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        <header className="mb-3 flex items-center justify-between text-xs text-slate-200">
-          <div className="inline-flex items-center gap-2 rounded-full bg-slate-900/80 px-3 py-1 border border-slate-800">
-            <span className="h-2 w-2 rounded-full bg-sky-400 animate-pulse" />
-            <span className="font-medium">Built on Base</span>
+        <header className="mb-3 flex items-center justify-end text-xs text-slate-200">
+          <div className="flex items-center gap-2">
+            <Wallet>
+              <ConnectWallet className="bg-white border border-slate-200 text-slate-900 hover:bg-slate-50 rounded-full px-3 py-1 text-xs h-auto min-h-0 shadow-sm">
+                <Avatar className="h-4 w-4" />
+                <Name className="text-slate-900" />
+              </ConnectWallet>
+              <WalletDropdown>
+                <Identity className="px-4 pt-3 pb-2" hasCopyAddressOnClick>
+                  <Avatar />
+                  <Name />
+                  <Address />
+                </Identity>
+                <WalletDropdownLink icon="wallet" href="https://keys.coinbase.com">
+                  Wallet
+                </WalletDropdownLink>
+                <WalletDropdownDisconnect />
+              </WalletDropdown>
+            </Wallet>
           </div>
-          {isConnected && (
-            <span className="text-[11px] text-slate-400">
-              {shortenAddress(address)}
-            </span>
-          )}
         </header>
 
         <motion.div
@@ -169,6 +193,8 @@ export default function BaseNameMiniApp() {
             isAvailable={isAvailable as boolean | undefined}
             ethFee={ethFee}
             usdcPrice={usdcPrice}
+            expectedChainId={EXPECTED_CHAIN_ID}
+            isConnected={isConnected}
           />
         </motion.div>
       </div>
@@ -263,15 +289,20 @@ function MintSection(props: {
   isAvailable?: boolean;
   ethFee: bigint;
   usdcPrice: number;
+  expectedChainId: number;
+  isConnected: boolean;
 }) {
   const {
     name,
     canMint,
     ethFee,
     usdcPrice,
+    expectedChainId,
+    isConnected,
   } = props;
 
   const chainId = useChainId();
+  const { switchChain, isPending: isSwitching } = useSwitchChain();
   const [method, setMethod] = useState<PaymentMethod>("ETH");
   const [fallbackMode, setFallbackMode] = useState(false);
   const [isPayingUsdc, setIsPayingUsdc] = useState(false);
@@ -313,6 +344,11 @@ function MintSection(props: {
   const ethFeeText = (Number(ethFee) / 1e18).toFixed(4);
 
   const handleMint = useCallback(async () => {
+    if (!isConnected) {
+      // Should be handled by ConnectWallet button now
+      return;
+    }
+
     if (!name || !canMint) return;
 
     if (method === "ETH") {
@@ -353,9 +389,10 @@ function MintSection(props: {
     } finally {
       setIsPayingUsdc(false);
     }
-  }, [name, canMint, method, ethFee, writeEth, writeUsdc, fallbackMode]);
+  }, [name, canMint, method, ethFee, writeEth, writeUsdc, fallbackMode, isConnected]);
 
   const primaryLabel = (() => {
+    if (!isConnected) return "Connect Wallet";
     if (!canMint) return "Mint button will appear when ready";
 
     if (method === "ETH") {
@@ -374,9 +411,18 @@ function MintSection(props: {
 
   return (
     <section className="space-y-3">
-      {chainId !== 84532 && (
-        <div className="rounded-lg bg-amber-50 px-3 py-2 text-[11px] font-medium text-amber-700 border border-amber-200">
-          Wrong network. Please switch to Base Sepolia. (Detected: {chainId})
+      {chainId !== expectedChainId && (
+        <div className="rounded-lg bg-amber-50 px-3 py-2 text-[11px] font-medium text-amber-700 border border-amber-200 flex items-center justify-between">
+          <span>
+            Wrong network. Please switch to {expectedChainId === 84532 ? "Base Sepolia" : "Base Mainnet"}. (Detected: {chainId})
+          </span>
+          <button
+            onClick={() => switchChain({ chainId: expectedChainId })}
+            disabled={isSwitching}
+            className="rounded bg-amber-200 px-2 py-1 text-[10px] font-semibold text-amber-800 hover:bg-amber-300 disabled:opacity-50"
+          >
+            {isSwitching ? "Switching..." : "Switch"}
+          </button>
         </div>
       )}
 
@@ -398,22 +444,30 @@ function MintSection(props: {
         />
       </div>
 
-      <motion.button
-        type="button"
-        disabled={!canMint || isMinting || chainId !== 84532}
-        onClick={handleMint}
-        whileTap={!isMinting && canMint && chainId === 84532 ? { scale: 0.97 } : {}}
-        className={`mt-1 w-full rounded-xl py-2.5 text-sm font-semibold shadow-md transition
-          ${
-            !canMint || chainId !== 84532
-              ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-              : "bg-sky-600 text-white hover:bg-sky-500"
-          } ${
-          isMinting ? "opacity-80 cursor-wait" : ""
-        }`}
-      >
-        {primaryLabel}
-      </motion.button>
+      {!isConnected ? (
+        <Wallet>
+          <ConnectWallet className="mt-1 w-full rounded-xl bg-sky-600 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-sky-500 h-auto min-h-0">
+            <span className="text-white">Connect Wallet</span>
+          </ConnectWallet>
+        </Wallet>
+      ) : (
+        <motion.button
+          type="button"
+          disabled={!canMint || isMinting || chainId !== expectedChainId}
+          onClick={handleMint}
+          whileTap={!isMinting && canMint && chainId === expectedChainId ? { scale: 0.97 } : {}}
+          className={`mt-1 w-full rounded-xl py-2.5 text-sm font-semibold shadow-md transition
+            ${
+              !canMint || chainId !== expectedChainId
+                ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                : "bg-sky-600 text-white hover:bg-sky-500"
+            } ${
+            isMinting ? "opacity-80 cursor-wait" : ""
+          }`}
+        >
+          {primaryLabel}
+        </motion.button>
+      )}
 
       {hasPaidUsdc && !isUsdcSuccess && method === "USDC" && (
         <p className="text-[11px] text-emerald-600">
@@ -472,3 +526,4 @@ function PaymentMethodCard(props: {
     </button>
   );
 }
+
